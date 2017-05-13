@@ -83,7 +83,94 @@ void delay(limit1,limit2)
         for(j=0;j<limit2;j++);
     }
 }
+void clear_memory()
+{
+            //Process to clear FLASH memory
+            LATAbits.LATA8=1;   //Yellow LED on
+            LATBbits.LATB5=0;  //Lower SS for instruction delivery
+            SPI_Transmit(0x50);//Enable-Write_Status-Register opcode
+            LATBbits.LATB5=1;  //Raise SS for instruction completion
+        
+            LATBbits.LATB5=0;  //Lower SS for instruction delivery
+            SPI_Transmit(0x01);//Write-Status-Register opcode
+            SPI_Transmit(0x00);//Status Register:0x00
+                               //Must set BP2,BP1,BP0 to 0 in order to take off write protect
+            LATBbits.LATB5=1;
+    
+            LATBbits.LATB5=0;
+            SPI_Transmit(0x05);//Read status register Opcode
+            SPI_Receive();     //Read status register
+            LATBbits.LATB5=1;
+    
 
+            WREN();
+            LATBbits.LATB5=0;
+            SPI_Transmit(0xC7);//Opcode for chip erase
+            LATBbits.LATB5=1;
+    
+            while((Read_Status_Reg() & 0x01) == 0x01);//Wait for memory to be clear
+    
+            Read_Byte(0x03,0x020000);//Check when data is 0xFF
+    
+            Read_Status_Reg();            
+            delay(100,1000);
+            LATAbits.LATA8=0;   //Yellow LED off
+            LATAbits.LATA2=1;   //Red LED on
+            LATAbits.LATA3=1;   //Green LED on
+            delay(100,100);
+}
+void setup()
+{
+            WREN();
+            while((Read_Status_Reg() & 0x02)==0x00);//While WEL=0 keep reading the status register Read_Status_Reg();
+            LATBbits.LATB5=0;
+            SPI_Transmit(0xAD);//AAI Word Program instruction opcode
+            SPI_Transmit(0x02);//Address 0x020000
+            SPI_Transmit(0x00);
+            SPI_Transmit(0x00);
+            SPI_Transmit(0xAB);//Word Byte Data: 0xABCD//This will be junk
+            SPI_Transmit(0xCD);
+            LATBbits.LATB5=1;
+            while((Read_Status_Reg()& 0x01) == 0x01);//Polling Busy bit in the status register
+            
+            LATAbits.LATA8=1;   //Yellow LED on
+            LATAbits.LATA2=0;   //Red LED off
+            LATAbits.LATA3=0;   //Green LED off
+            delay(100,1000);
+}
+void record()
+{
+            LATAbits.LATA2=1;   //Red LED on
+            while((Read_Status_Reg()& 0x01) == 0x01);//Polling Busy bit in the status register
+    
+            LATBbits.LATB5=0;
+            SPI_Transmit(0xAD);//AAI opcode
+            SPI_Transmit(0xEF);//Word Byte Data: 0xEFBA Actual Data
+            SPI_Transmit(0xBA);
+            LATBbits.LATB5=1;
+}
+void exit_record()
+{
+            LATAbits.LATA3=1;   //Green LED on
+            
+            LATBbits.LATB5=0;    
+            SPI_Transmit(0x04);//Opcode WRDI to exit AAI Mode
+            LATBbits.LATB5=1;
+}
+void play()//read data
+{
+            Read_Status_Reg();//Read status register
+            LATBbits.LATB5=0;
+            SPI_Transmit(0x03);//Read opcode
+            SPI_Transmit(0x02);//3-byte start address
+            SPI_Transmit(0x00);
+            SPI_Transmit(0x00);
+            while(SPI_Receive()!=0xFF)//Read all the data that was written until we reach the area of memory that is clear
+            {
+                SPI_Receive();
+            }
+            LATBbits.LATB5=1;
+}
 
 void main()
 {
@@ -141,57 +228,8 @@ void main()
         //When the LED goes from ON to OFF, this indicates that the memory is cleared
         if(PORTAbits.RA4==1)    //Erase button is pressed
         {
-            //Process to clear FLASH memory
-            LATAbits.LATA8=1;   //Yellow LED on
-            LATBbits.LATB5=0;  //Lower SS for instruction delivery
-            SPI_Transmit(0x50);//Enable-Write_Status-Register opcode
-            LATBbits.LATB5=1;  //Raise SS for instruction completion
-        
-            LATBbits.LATB5=0;  //Lower SS for instruction delivery
-            SPI_Transmit(0x01);//Write-Status-Register opcode
-            SPI_Transmit(0x00);//Status Register:0x00
-                               //Must set BP2,BP1,BP0 to 0 in order to take off write protect
-            LATBbits.LATB5=1;
-    
-            LATBbits.LATB5=0;
-            SPI_Transmit(0x05);//Read status register Opcode
-            SPI_Receive();     //Read status register
-            LATBbits.LATB5=1;
-    
-
-            WREN();
-            LATBbits.LATB5=0;
-            SPI_Transmit(0xC7);//Opcode for chip erase
-            LATBbits.LATB5=1;
-    
-            while((Read_Status_Reg() & 0x01) == 0x01);//Wait for memory to be clear
-    
-            Read_Byte(0x03,0x020000);//Check when data is 0xFF
-    
-            Read_Status_Reg();            
-            delay(100,1000);
-            LATAbits.LATA8=0;   //Yellow LED off
-            LATAbits.LATA2=1;   //Red LED on
-            LATAbits.LATA3=1;   //Green LED on
-            delay(100,100);
-            
-            WREN();
-            while((Read_Status_Reg() & 0x02)==0x00);//While WEL=0 keep reading the status register Read_Status_Reg();
-            LATBbits.LATB5=0;
-            SPI_Transmit(0xAD);//AAI Word Program instruction opcode
-            SPI_Transmit(0x02);//Address 0x020000
-            SPI_Transmit(0x00);
-            SPI_Transmit(0x00);
-            SPI_Transmit(0xAB);//Word Byte Data: 0xABCD//This will be junk
-            SPI_Transmit(0xCD);
-            LATBbits.LATB5=1;
-            while((Read_Status_Reg()& 0x01) == 0x01);//Polling Busy bit in the status register
-            
-            LATAbits.LATA8=1;   //Yellow LED on
-            LATAbits.LATA2=0;   //Red LED off
-            LATAbits.LATA3=0;   //Green LED off
-            delay(100,1000);
-            
+            clear_memory();
+            setup();           
         }
         else                    //Erase button is not pressed
         {
@@ -202,14 +240,7 @@ void main()
         //Press and Hold Record button
         if(PORTAbits.RA0==1)    //Record button is pressed
         {
-            LATAbits.LATA2=1;   //Red LED on
-            while((Read_Status_Reg()& 0x01) == 0x01);//Polling Busy bit in the status register
-    
-            LATBbits.LATB5=0;
-            SPI_Transmit(0xAD);//AAI opcode
-            SPI_Transmit(0xEF);//Word Byte Data: 0xEFBA Actual Data
-            SPI_Transmit(0xBA);
-            LATBbits.LATB5=1;
+            record();           //Function to write data onto flash memory
         }
         else                    //Record button not pressed
         {
@@ -219,24 +250,8 @@ void main()
 
         if(PORTAbits.RA1==1)    //Play button is pressed
         {
-            LATAbits.LATA3=1;   //Green LED on
-            
-            LATBbits.LATB5=0;    
-            SPI_Transmit(0x04);//Opcode WRDI to exit AAI Mode
-            LATBbits.LATB5=1;
-            
-            
-            Read_Status_Reg();//Read status register
-            LATBbits.LATB5=0;
-            SPI_Transmit(0x03);//Read opcode
-            SPI_Transmit(0x02);//3-byte start address
-            SPI_Transmit(0x00);
-            SPI_Transmit(0x00);
-            while(SPI_Receive()!=0xFF)//Read all the data that was written until we reach the area of memory that is clear
-            {
-                SPI_Receive();
-            }
-            LATBbits.LATB5=1;
+            exit_record();      //Function to exit AAI            
+            play();             //Function to read data from flash memory
             
         }
         else                    //Play button is not pressed
