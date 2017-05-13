@@ -12,8 +12,66 @@
 //Configuration Register - FICD
 #pragma config JTAGEN = 0   //JTAG is disabled
 
+#pragma config FWDTEN	= 0	//Watchdog timer is disabled
+#pragma config ICS		= 3	//Program through PGEC1/PGED1 ports
+
 #define PPSUnLock   __builtin_write_OSCCONL(OSCCON & 0xBF)
 #define PPSLock     __builtin_write_OSCCONL(OSCCON | 0x40)
+
+void clockSetup(){
+    //Clock source definition - A single FRC internal clock
+    //OSCTUN Register
+    OSCTUNbits.TUN = 0;     //select FRC = 7.37MHz
+    
+    //CLKDIV Register
+    CLKDIVbits.ROI = 0;     //interrupts have no effect on clock recovery
+    CLKDIVbits.FRCDIV = 3;  //FOSC=FRC/8=7.37MHz/8 and FP=FOSC/2=460KHz
+}
+
+void spiSetup(){
+    //SPI configuration MASTER mode sending 8 bits
+    SPI1CON1bits.DISSCK = 0;//Enable the internal SPI clock
+    SPI1CON1bits.DISSDO = 0;//Enable the SPI data output, SDO
+    SPI1CON1bits.MODE16 = 0;//Enable the 8-bit data mode
+    SPI1CON1bits.SSEN = 0;  //This unit is not a slave so Slave Select pin is not used
+    SPI1CON1bits.MSTEN = 1; //Enable MASTER mode
+    SPI1CON1bits.SMP = 0;   //Sample data at he pos edge when received at the neg edge of SCK
+    SPI1CON1bits.CKE = 1;   //Output data changes when SCK goes from ACTIVE to IDLE state
+    SPI1CON1bits.CKP = 0;   //SCK polarity: IDLE is low pase and ACTIVE is high phase of SCK
+    SPI1CON1bits.PPRE = 1;  //Primary SPI clock pre-scale is 1:1
+    SPI1CON1bits.SPRE = 7;  //Secondary SPI clock pre-scale is 1:1 -> SCK = 460KHz
+    SPI1STATbits.SPIROV = 0;//Clear initial overflow bit in case an overflow condition in SPI1BUF
+    SPI1STATbits.SPIEN = 1; //Enable the SPI interface
+}
+
+void pinSelect(){
+    //Peripheral Pin Select with RP pins
+    PPSUnLock;
+    RPOR4bits.RP8R = 8;     //RP8 is an output for SCK1
+    RPINR20bits.SCK1R = 8;  //RP8 is an input for SCK1
+    RPOR4bits.RP9R = 7;     //RP9 is an output for SDO1
+    RPINR20bits.SDI1R = 7;  //RP7 is an input for SDI1
+    //RPOR3bits.RP6R = 9;     //RP6 is an output for SS1
+    RPOR2bits.RP5R = 9;     //RP5 is an output for SS1
+    PPSLock;
+}
+
+void ioSetup(){
+    //Define I/O
+    //TRISBbits.TRISB6 = 0;   //Configure RB6 as an output for SS
+    TRISBbits.TRISB5 = 0;   //Configure RB5 as an output for SS
+    TRISBbits.TRISB8 = 0;   //Configure RB8 as an output for SCK1
+    TRISBbits.TRISB9 = 0;   //Configure RB9 as an output SDO1
+    TRISBbits.TRISB7 = 1;   //Configure RB7 as an input for SD1
+    
+    AD1PCFGL=0xFFFF;    //Pin RA0, RA1, RA2, RA3 are assigned to be digital I/O pins
+    TRISAbits.TRISA0=1; //Pin RA0 is assigned as input for record
+    TRISAbits.TRISA1=1; //Pin RA1 is assigned as input for play
+    TRISAbits.TRISA2=0; //Pin RA2 is assigned as output for Red LED
+    TRISAbits.TRISA3=0; //Pin RA3 is assigned as output for Green LED
+    TRISAbits.TRISA4=1; //Pin RA4 is assigned as input for erase
+    TRISAbits.TRISA8=0; //Pin RA8 is assigned as input for Yellow LED
+}
 
 unsigned char SPI_Transmit(unsigned char TxValue)
 {
@@ -174,54 +232,11 @@ void play()//read data
 
 void main()
 {
-    //Clock source definition - A single FRC internal clock
-    //OSCTUN Register
-    OSCTUNbits.TUN = 0;     //select FRC = 7.37MHz
-    
-    //CLKDIV Register
-    CLKDIVbits.ROI = 0;     //interrupts have no effect on clock recovery
-    CLKDIVbits.FRCDIV = 3;  //FOSC=FRC/8=7.37MHz/8 and FP=FOSC/2=460KHz
-    
-    //SPI configuration MASTER mode sending 8 bits
-    SPI1CON1bits.DISSCK = 0;//Enable the internal SPI clock
-    SPI1CON1bits.DISSDO = 0;//Enable the SPI data output, SDO
-    SPI1CON1bits.MODE16 = 0;//Enable the 8-bit data mode
-    SPI1CON1bits.SSEN = 0;  //This unit is not a slave so Slave Select pin is not used
-    SPI1CON1bits.MSTEN = 1; //Enable MASTER mode
-    SPI1CON1bits.SMP = 0;   //Sample data at he pos edge when received at the neg edge of SCK
-    SPI1CON1bits.CKE = 1;   //Output data changes when SCK goes from ACTIVE to IDLE state
-    SPI1CON1bits.CKP = 0;   //SCK polarity: IDLE is low pase and ACTIVE is high phase of SCK
-    SPI1CON1bits.PPRE = 1;  //Primary SPI clock pre-scale is 1:1
-    SPI1CON1bits.SPRE = 7;  //Secondary SPI clock pre-scale is 1:1 -> SCK = 460KHz
-    SPI1STATbits.SPIROV = 0;//Clear initial overflow bit in case an overflow condition in SPI1BUF
-    SPI1STATbits.SPIEN = 1; //Enable the SPI interface
-    
-    //Peripheral Pin Select with RP pins
-    PPSUnLock;
-    RPOR4bits.RP8R = 8;     //RP8 is an output for SCK1
-    RPINR20bits.SCK1R = 8;  //RP8 is an input for SCK1
-    RPOR4bits.RP9R = 7;     //RP9 is an output for SDO1
-    RPINR20bits.SDI1R = 7;  //RP7 is an input for SDI1
-    //RPOR3bits.RP6R = 9;     //RP6 is an output for SS1
-    RPOR2bits.RP5R = 9;     //RP5 is an output for SS1
-    PPSLock;
-    
-    //Define I/O
-    //TRISBbits.TRISB6 = 0;   //Configure RB6 as an output for SS
-    TRISBbits.TRISB5 = 0;   //Configure RB5 as an output for SS
-    TRISBbits.TRISB8 = 0;   //Configure RB8 as an output for SCK1
-    TRISBbits.TRISB9 = 0;   //Configure RB9 as an output SDO1
-    TRISBbits.TRISB7 = 1;   //Configure RB7 as an input for SD1
-    
-    AD1PCFGL=0xFFFF;    //Pin RA0, RA1, RA2, RA3 are assigned to be digital I/O pins
-    TRISAbits.TRISA0=1; //Pin RA0 is assigned as input for record
-    TRISAbits.TRISA1=1; //Pin RA1 is assigned as input for play
-    TRISAbits.TRISA2=0; //Pin RA2 is assigned as output for Red LED
-    TRISAbits.TRISA3=0; //Pin RA3 is assigned as output for Green LED
-    TRISAbits.TRISA4=1; //Pin RA4 is assigned as input for erase
-    TRISAbits.TRISA8=0; //Pin RA8 is assigned as input for Yellow LED
-    
-    
+	clockSetup();
+	spiSetup();
+	pinSelect();
+	ioSetup();
+
     while(1)
     {
         //Press erase button and wait for LED to turn off
