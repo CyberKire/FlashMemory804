@@ -48,8 +48,7 @@ void spiSetup(){
     SPI1CON1bits.CKE = 1;   //Output data changes when SCK goes from ACTIVE to IDLE state
     SPI1CON1bits.CKP = 0;   //SCK polarity: IDLE is low pase and ACTIVE is high phase of SCK
     SPI1CON1bits.PPRE = 1;  //Primary SPI clock pre-scale is 1:1
-    //SPI1CON1bits.SPRE = 7;  //Secondary SPI clock pre-scale is 1:1 -> SCK = 460KHz
-    SPI1CON1bits.SPRE = 5;  //Secondary SPI Clock = 143.9/3 = 48KHz
+    SPI1CON1bits.SPRE = 7;  //Secondary SPI clock pre-scale is 1:1 -> SCK = 460KHz
     SPI1STATbits.SPIROV = 0;//Clear initial overflow bit in case an overflow condition in SPI1BUF
     SPI1STATbits.SPIEN = 1; //Enable the SPI interface
 }
