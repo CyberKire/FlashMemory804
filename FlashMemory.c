@@ -19,13 +19,22 @@
 #define PPSLock     __builtin_write_OSCCONL(OSCCON | 0x40)
 
 void clockSetup(){
-    //Clock source definition - A single FRC internal clock
-    //OSCTUN Register
-    OSCTUNbits.TUN = 0;     //select FRC = 7.37MHz
-    
-    //CLKDIV Register
-    CLKDIVbits.ROI = 0;     //interrupts have no effect on clock recovery
-    CLKDIVbits.FRCDIV = 3;  //FOSC=FRC/8=7.37MHz/8 and FP=FOSC/2=460KHz
+	//Clock source definition - A single FRC internal clock
+	OSCTUNbits.TUN      = 0;    //Select FRC = 7.37 MHz
+
+	//CLKDIV register
+	CLKDIVbits.FRCDIV   = 0;    //FRCDIVN = FRC/1 = 7.37MHz = FIN
+	CLKDIVbits.PLLPRE   = 0;    //FIN/2 = 7.37/2 = 3.685MHz
+	PLLFBDbits.PLLDIV   = 38;   //FVCO = 3.68*40 = 147.4MHz
+	CLKDIVbits.PLLPOST  = 3;    //FRCPLL = 147.4/8 = 18.42MHz = FOSC and 
+									//FP = 18.42/2 = 9.21MHz
+	CLKDIVbits.DOZE     = 0;    //FCY = FP/1 = 9.21MHz
+	CLKDIVbits.DOZEN    = 1;    //DOZE is the ratio between CPU and periph clk
+
+	//ACLKCON Register = Auxiliary clock control for DAC
+	ACLKCONbits.AOSCMD	 = 0;    //Aux clock is disabled
+	ACLKCONbits.SELACLK  = 0;    //Select PLL Output
+	ACLKCONbits.APSTSCLR = 7;    //FA = FOSC/1 = 18.42 MHz
 }
 
 void spiSetup(){
@@ -39,7 +48,8 @@ void spiSetup(){
     SPI1CON1bits.CKE = 1;   //Output data changes when SCK goes from ACTIVE to IDLE state
     SPI1CON1bits.CKP = 0;   //SCK polarity: IDLE is low pase and ACTIVE is high phase of SCK
     SPI1CON1bits.PPRE = 1;  //Primary SPI clock pre-scale is 1:1
-    SPI1CON1bits.SPRE = 7;  //Secondary SPI clock pre-scale is 1:1 -> SCK = 460KHz
+    //SPI1CON1bits.SPRE = 7;  //Secondary SPI clock pre-scale is 1:1 -> SCK = 460KHz
+    SPI1CON1bits.SPRE = 5;  //Secondary SPI Clock = 143.9/3 = 48KHz
     SPI1STATbits.SPIROV = 0;//Clear initial overflow bit in case an overflow condition in SPI1BUF
     SPI1STATbits.SPIEN = 1; //Enable the SPI interface
 }
