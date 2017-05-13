@@ -19,14 +19,6 @@
 #define PPSLock     __builtin_write_OSCCONL(OSCCON | 0x40)
 
 void clockSetup(){
-    //Clock source definition - A single FRC internal clock
-    //OSCTUN Register
-    //OSCTUNbits.TUN = 0;     //select FRC = 7.37MHz
-    
-    //CLKDIV Register
-    //CLKDIVbits.ROI = 0;     //interrupts have no effect on clock recovery
-    //CLKDIVbits.FRCDIV = 3;  //FOSC=FRC/8=7.37MHz/8 and FP=FOSC/2=460KHz
-
 	//Clock source definition - A single FRC internal clock
 	OSCTUNbits.TUN      = 0;    //Select FRC = 7.37 MHz
 
@@ -49,8 +41,7 @@ void spiSetup(){
     //SPI configuration MASTER mode sending 8 bits
     SPI1CON1bits.DISSCK = 0;//Enable the internal SPI clock
     SPI1CON1bits.DISSDO = 0;//Enable the SPI data output, SDO
-    //SPI1CON1bits.MODE16 = 0;//Enable the 8-bit data mode
-    SPI1CON1bits.MODE16 = 1;//Enable the 8-bit data mode
+    SPI1CON1bits.MODE16 = 0;//Enable the 8-bit data mode
     SPI1CON1bits.SSEN = 0;  //This unit is not a slave so Slave Select pin is not used
     SPI1CON1bits.MSTEN = 1; //Enable MASTER mode
     SPI1CON1bits.SMP = 0;   //Sample data at he pos edge when received at the neg edge of SCK
