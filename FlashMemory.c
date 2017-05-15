@@ -18,6 +18,9 @@
 #define PPSUnLock   __builtin_write_OSCCONL(OSCCON & 0xBF)
 #define PPSLock     __builtin_write_OSCCONL(OSCCON | 0x40)
 
+int rec_count=0;
+int play_count=0;
+
 void clockSetup(){
 	//Clock source definition - A single FRC internal clock
 	OSCTUNbits.TUN      = 0;    //Select FRC = 7.37 MHz
@@ -179,7 +182,7 @@ void clear_memory()
     
             Read_Byte(0x03,0x020000);//Check when data is 0xFF
     
-            Read_Status_Reg();            
+            //Read_Status_Reg();            
             delay(100,1000);
             LATAbits.LATA8=0;   //Yellow LED off
             LATAbits.LATA2=1;   //Red LED on
@@ -215,6 +218,8 @@ void record()
             SPI_Transmit(0xEF);//Word Byte Data: 0xEFBA Actual Data
             SPI_Transmit(0xBA);
             LATBbits.LATB5=1;
+            rec_count++;
+            
 }
 void exit_record()
 {
@@ -232,10 +237,36 @@ void play()//read data
             SPI_Transmit(0x02);//3-byte start address
             SPI_Transmit(0x00);
             SPI_Transmit(0x00);
-            while(SPI_Receive()!=0xFF)//Read all the data that was written until we reach the area of memory that is clear
+            /*while(SPI_Receive()!=0xFF)//Read all the data that was written until we reach the area of memory that is clear
             {
                 SPI_Receive();
             }
+             * */
+            /*            
+            int i=0,j=0,k=0;
+            while(i!=32000)//i!=40000 leaves the light LED on forever
+            {
+                SPI_Receive();
+                i++;
+                LATAbits.LATA3=1;//Green LED on               
+            }
+            while(j!=32000)
+            {
+                SPI_Receive();
+                j++;
+            }
+            while(k!=32000)
+            {
+                SPI_Receive();
+                k++;            }
+            */
+            while(play_count!=(rec_count*6))
+            {
+                SPI_Receive();
+                play_count++;
+                LATAbits.LATA3=1;
+            }
+            LATAbits.LATA3=0;//Green LED off           
             LATBbits.LATB5=1;
 }
 
